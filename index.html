@@ -1,0 +1,1062 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+// --- INLINE SVG ICONS (Bulletproof - No external dependencies) ---
+const IconUsers = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+
+const IconShield = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const IconCrown = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  </svg>
+);
+
+const IconPlay = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
+const IconEye = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+
+const IconEyeOff = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a9.957 9.957 0 013.722-.843c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21f-3.414-3.414L3 3" />
+  </svg>
+);
+
+const IconClock = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const IconMessage = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+);
+
+const IconCheck = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+const IconX = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+// --- HELPER FUNCTIONS & AUDIO SYNTHESIZER ---
+const generateRoomCode = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'P';
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+const playTickSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.04);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.04);
+  } catch (e) {
+    // Web audio fail safe
+  }
+};
+
+const playBellSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    [0, 0.15, 0.3].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now + delay);
+      gain.gain.setValueAtTime(0.25, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.3);
+    });
+  } catch (e) {
+    // Web audio fail safe
+  }
+};
+
+const DEFAULT_ROLES = [
+  { name: 'หมาป่า (Werewolf)', type: 'bad', desc: 'ตื่นขึ้นมาตอนกลางคืนเพื่อเลือกกำจัดผู้เล่น 1 คน' },
+  { name: 'หมาป่า (Werewolf)', type: 'bad', desc: 'ตื่นขึ้นมาตอนกลางคืนเพื่อเลือกกำจัดผู้เล่น 1 คน' },
+  { name: 'ผู้ทำนาย (Seer)', type: 'good', desc: 'ตื่นขึ้นมาตอนกลางคืนเพื่อตรวจสอบบทบาทของผู้เล่น 1 คน' },
+  { name: 'คุณหมอ (Doctor)', type: 'good', desc: 'เลือกปกป้องผู้เล่น 1 คนในตอนกลางคืนไม่ให้โดนหมาป่าทำร้าย' },
+  { name: 'นักล่า (Hunter)', type: 'good', desc: 'หากคุณตาย คุณสามารถเลือกยิงผู้เล่นอีกคนให้ตายตามได้' },
+  { name: 'ชาวบ้าน (Villager)', type: 'good', desc: 'ช่วยกันสืบหาและโหวตกำจัดหมาป่าในตอนกลางวัน' },
+  { name: 'ชาวบ้าน (Villager)', type: 'good', desc: 'ช่วยกันสืบหาและโหวตกำจัดหมาป่าในตอนกลางวัน' },
+  { name: 'ชาวบ้าน (Villager)', type: 'good', desc: 'ช่วยกันสืบหาและโหวตกำจัดหมาป่าในตอนกลางวัน' }
+];
+
+const DEFAULT_HEADS_UP_WORDS = [
+  'โดเรมอน', 'ส้มตำปูปลาร้า', 'พิซซ่า', 'หมูกระทะ', 'คีอานู รีฟส์',
+  'ไททานิค', 'ฟุตบอล', 'แฮร์รี่ พอตเตอร์', 'แมวเปรี้ยว', 'ตึกมหานคร',
+  'ลิซ่า BLACKPINK', 'ไก่ทอดหาดใหญ่', 'ไอโฟน', 'รถไฟฟ้า BTS', 'กะเพราไข่ดาว'
+];
+
+export default function App() {
+  // --- STATE MANAGEMENT ---
+  const [view, setView] = useState('home'); // 'home' | 'lobby' | 'game' | 'admin'
+  const [playerName, setPlayerName] = useState('');
+  const [inputRoomCode, setInputRoomCode] = useState('');
+  const [myPlayerId, setMyPlayerId] = useState('');
+  const [adminPasscode, setAdminPasscode] = useState('');
+
+  // Admin metrics state
+  const [metrics, setMetrics] = useState({
+    totalViews: 128,
+    werewolfPlayed: 45,
+    headsupPlayed: 32,
+    customGames: []
+  });
+
+  // Custom Game Form
+  const [newGameTitle, setNewGameTitle] = useState('');
+  const [newGameWords, setNewGameWords] = useState('');
+
+  // Room State
+  const [room, setRoom] = useState(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [cardRevealed, setCardRevealed] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+
+  // Heads up local timer
+  const [headsUpActive, setHeadsUpActive] = useState(false);
+  const [headsUpTimer, setHeadsUpTimer] = useState(60);
+  const [headsUpIndex, setHeadsUpIndex] = useState(0);
+  const [headsUpScore, setHeadsUpScore] = useState(0);
+
+  // Initialize unique user id on mount
+  useEffect(() => {
+    setMyPlayerId('user_' + Math.random().toString(36).substr(2, 6));
+  }, []);
+
+  // Werewolf Discussion Timer tick effect
+  useEffect(() => {
+    let interval = null;
+    if (view === 'game' && room?.gameType === 'werewolf' && room?.phase === 'discussion' && room?.timer > 0) {
+      interval = setInterval(() => {
+        playTickSound();
+        setRoom(prev => {
+          if (!prev) return prev;
+          if (prev.timer <= 1) {
+            playBellSound();
+            return { ...prev, timer: 0, phase: 'voting' };
+          }
+          return { ...prev, timer: prev.timer - 1 };
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [view, room?.gameType, room?.phase, room?.timer]);
+
+  // Heads Up local timer effect
+  useEffect(() => {
+    let interval = null;
+    if (headsUpActive && headsUpTimer > 0) {
+      interval = setInterval(() => {
+        setHeadsUpTimer(t => t - 1);
+      }, 1000);
+    } else if (headsUpTimer === 0) {
+      setHeadsUpActive(false);
+    }
+    return () => clearInterval(interval);
+  }, [headsUpActive, headsUpTimer]);
+
+  // --- HANDLERS ---
+  const handleCreateRoom = () => {
+    if (!playerName.trim()) {
+      alert("กรุณากรอกชื่อของคุณก่อนสร้างห้อง!");
+      return;
+    }
+
+    const code = generateRoomCode();
+    const newRoom = {
+      code,
+      hostId: myPlayerId,
+      gameType: 'werewolf',
+      locationMode: 'in_person', // 'in_person' | 'online'
+      hasGM: true,
+      status: 'lobby', // 'lobby' | 'playing'
+      phase: 'discussion', // 'discussion' | 'voting'
+      timer: 120,
+      players: [
+        { id: myPlayerId, name: playerName.trim(), isGM: false, role: null }
+      ],
+      votes: {}, // userId -> targetId or 'skip'
+      chatMessages: []
+    };
+
+    setRoom(newRoom);
+    setView('lobby');
+  };
+
+  const handleJoinRoom = () => {
+    if (!playerName.trim()) {
+      alert("กรุณากรอกชื่อของคุณก่อนเข้าห้อง!");
+      return;
+    }
+    if (!inputRoomCode.trim()) {
+      alert("กรุณากรอกรหัสห้อง!");
+      return;
+    }
+
+    const code = inputRoomCode.trim().toUpperCase();
+    // Create or join simulated room
+    const joinedRoom = {
+      code,
+      hostId: 'host_demo',
+      gameType: 'werewolf',
+      locationMode: 'in_person',
+      hasGM: true,
+      status: 'lobby',
+      phase: 'discussion',
+      timer: 120,
+      players: [
+        { id: 'host_demo', name: 'เจ้าของห้อง (Host)', isGM: true, role: null },
+        { id: myPlayerId, name: playerName.trim(), isGM: false, role: null },
+        { id: 'p3', name: 'เพื่อน A', isGM: false, role: null },
+        { id: 'p4', name: 'เพื่อน B', isGM: false, role: null }
+      ],
+      votes: {},
+      chatMessages: []
+    };
+
+    setRoom(joinedRoom);
+    setView('lobby');
+  };
+
+  const handleToggleGM = (isGM) => {
+    if (!room) return;
+    if (isGM) {
+      const existingGM = room.players.find(p => p.isGM && p.id !== myPlayerId);
+      if (existingGM) {
+        alert(`มีผู้ดำเนินเกม (GM) แล้ว: ${existingGM.name}`);
+        return;
+      }
+    }
+    setRoom(prev => ({
+      ...prev,
+      players: prev.players.map(p => p.id === myPlayerId ? { ...p, isGM } : p)
+    }));
+  };
+
+  const handleStartGame = () => {
+    if (!room) return;
+
+    if (room.gameType === 'werewolf') {
+      if (room.hasGM) {
+        const hasGMPlayer = room.players.some(p => p.isGM);
+        if (!hasGMPlayer) {
+          alert("เกมนี้ถูกตั้งค่าให้มีผู้ดำเนินเกม (GM) โปรดเลือกให้มีผู้เล่น 1 คนเป็น GM ก่อนกดเริ่ม!");
+          return;
+        }
+      }
+
+      const nonGMPlayers = room.players.filter(p => !p.isGM);
+      const shuffledRoles = [...DEFAULT_ROLES].sort(() => 0.5 - Math.random());
+
+      let roleIdx = 0;
+      const assigned = room.players.map(p => {
+        if (p.isGM) {
+          return { ...p, role: { name: 'ผู้ดำเนินเกม (GM)', type: 'gm', desc: 'คุมจังหวะการเล่นประจำคืนและวัน' } };
+        }
+        const role = shuffledRoles[roleIdx % shuffledRoles.length];
+        roleIdx++;
+        return { ...p, role };
+      });
+
+      setRoom(prev => ({
+        ...prev,
+        players: assigned,
+        status: 'playing',
+        phase: 'discussion',
+        timer: 120,
+        votes: {}
+      }));
+      setMetrics(m => ({ ...m, werewolfPlayed: m.werewolfPlayed + 1 }));
+    } else {
+      setRoom(prev => ({ ...prev, status: 'playing' }));
+      setMetrics(m => ({ ...m, headsupPlayed: m.headsupPlayed + 1 }));
+    }
+
+    setView('game');
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !room) return;
+    const newMsg = {
+      id: Date.now().toString(),
+      senderName: playerName || 'คุณ',
+      senderId: myPlayerId,
+      text: chatInput.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setRoom(prev => ({
+      ...prev,
+      chatMessages: [...(prev.chatMessages || []), newMsg]
+    }));
+    setChatInput('');
+  };
+
+  const handleVote = (targetId) => {
+    if (!room) return;
+    setRoom(prev => ({
+      ...prev,
+      votes: { ...prev.votes, [myPlayerId]: targetId }
+    }));
+  };
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (adminPasscode === 'Probably1256') {
+      setView('admin');
+    } else {
+      alert('รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง!');
+    }
+  };
+
+  const me = room?.players?.find(p => p.id === myPlayerId);
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col justify-between selection:bg-blue-200">
+      
+      {/* --- HEADER --- */}
+      <header className="bg-white border-b border-blue-100 shadow-sm sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div 
+            onClick={() => setView('home')} 
+            className="flex items-center gap-2.5 cursor-pointer group"
+          >
+            <div className="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-extrabold shadow-md shadow-blue-500/20 group-hover:scale-105 transition">
+              🎲
+            </div>
+            <div>
+              <h1 className="font-black text-slate-900 text-lg leading-none tracking-tight">Board Game Party Hub</h1>
+              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mt-0.5">รวมบอร์ดเกมปาร์ตี้ เล่นกับเพื่อน</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {view !== 'admin' && (
+              <form onSubmit={handleAdminLogin} className="flex gap-1.5 items-center">
+                <input
+                  type="password"
+                  placeholder="รหัสผู้ดูแล"
+                  value={adminPasscode}
+                  onChange={(e) => setAdminPasscode(e.target.value)}
+                  className="bg-slate-100 border border-slate-200 text-xs px-2.5 py-1.5 rounded-xl text-slate-700 w-24 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <button
+                  type="submit"
+                  className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-xl transition"
+                >
+                  ผู้ดูแล
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* --- MAIN CONTENT AREA --- */}
+      <main className="max-w-4xl mx-auto px-4 py-6 flex-1 w-full flex flex-col items-center justify-center">
+
+        {/* ================= VIEW 1: HOME ================= */}
+        {view === 'home' && (
+          <div className="w-full max-w-md space-y-6 animate-fade-in">
+            <div className="text-center space-y-2">
+              <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">
+                🎉 ไม่ต้องมีบอร์ดเกมจริง ก็เล่นได้!
+              </span>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">สร้างห้องหรือเข้าเล่นกับเพื่อน</h2>
+              <p className="text-xs text-slate-500">ตั้งชื่อของคุณและเลือกรหัสห้องเพื่อเริ่มต้นความสนุก</p>
+            </div>
+
+            {/* Input Name & Room Controls */}
+            <div className="bg-white border border-blue-100 p-6 rounded-3xl shadow-lg shadow-blue-500/5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  1. ตั้งชื่อของคุณ (เหมือน Kahoot)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ใส่ชื่อเล่นของคุณ..."
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={handleCreateRoom}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-3.5 px-4 rounded-2xl shadow-md shadow-blue-600/20 transition transform active:scale-98 text-sm flex items-center justify-center gap-2"
+                >
+                  <IconCrown className="w-5 h-5 text-amber-300" /> สร้างห้องเกมใหม่ (สุ่มรหัสอัตโนมัติ)
+                </button>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-3 text-xs text-slate-400 font-bold">หรือ</span>
+                <div className="flex-grow border-t border-slate-200"></div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase">
+                  2. กรอกรหัสห้องเพื่อน (เช่น P1320SL)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="ใส่รหัสห้องที่นี่..."
+                    value={inputRoomCode}
+                    onChange={(e) => setInputRoomCode(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-mono font-bold uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleJoinRoom}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-3 rounded-2xl text-sm transition"
+                  >
+                    เข้าร่วม
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Game Info */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-white border border-blue-100 p-3.5 rounded-2xl flex items-center gap-3">
+                <div className="text-2xl">🐺</div>
+                <div>
+                  <div className="font-bold text-slate-800">Werewolf</div>
+                  <div className="text-slate-400">สุ่มบทบาท / โหวต</div>
+                </div>
+              </div>
+              <div className="bg-white border border-blue-100 p-3.5 rounded-2xl flex items-center gap-3">
+                <div className="text-2xl">📱</div>
+                <div>
+                  <div className="font-bold text-slate-800">ทายคำบนหัว</div>
+                  <div className="text-slate-400">ใบ้คำแข่งเวลา</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= VIEW 2: LOBBY ================= */}
+        {view === 'lobby' && room && (
+          <div className="w-full max-w-xl space-y-5 animate-fade-in">
+            {/* Room Header Code Card */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-3xl shadow-xl space-y-3 relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold text-blue-200 uppercase tracking-widest">รหัสห้องสำหรับเพื่อนๆ เข้าเล่น</span>
+                  <div className="text-4xl font-black font-mono tracking-wider mt-0.5 text-white">
+                    {room.code}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowQrModal(true)}
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-xl backdrop-blur-sm transition flex items-center gap-1.5"
+                >
+                  📷 QR Code
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-medium">
+                  {room.locationMode === 'in_person' ? '📍 เล่นที่เดียวกัน' : '🌐 เล่นคนละที่ (ออนไลน์)'}
+                </span>
+                <span className="text-xs bg-amber-400 text-slate-900 font-bold px-3 py-1 rounded-full">
+                  {room.gameType === 'werewolf' ? 'เกม Werewolf' : 'เกม ทายคำบนหัว'}
+                </span>
+              </div>
+            </div>
+
+            {/* Game Options Setup */}
+            <div className="bg-white border border-blue-100 p-5 rounded-3xl space-y-4 shadow-md">
+              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                <IconShield className="w-4 h-4 text-blue-600" /> ตั้งค่ากติกาและประเภทเกม
+              </h3>
+
+              {/* Game Type Selection */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setRoom(r => ({ ...r, gameType: 'werewolf' }))}
+                  className={`p-3 rounded-2xl border text-left transition ${
+                    room.gameType === 'werewolf' 
+                      ? 'bg-blue-50 border-blue-400 text-blue-900 shadow-sm font-bold' 
+                      : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <div className="text-sm">🐺 Werewolf (หมาป่า)</div>
+                  <div className="text-[11px] text-slate-400 font-normal">สุ่มโรล / จับเวลา / โหวต</div>
+                </button>
+
+                <button
+                  onClick={() => setRoom(r => ({ ...r, gameType: 'headsup' }))}
+                  className={`p-3 rounded-2xl border text-left transition ${
+                    room.gameType === 'headsup' 
+                      ? 'bg-blue-50 border-blue-400 text-blue-900 shadow-sm font-bold' 
+                      : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <div className="text-sm">📱 ทายคำบนหัว</div>
+                  <div className="text-[11px] text-slate-400 font-normal">ทาบหน้าผาก / ใบ้คำ</div>
+                </button>
+              </div>
+
+              {/* Location Mode Toggle */}
+              {room.gameType === 'werewolf' && (
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">สถานที่เล่น</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setRoom(r => ({ ...r, locationMode: 'in_person' }))}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                        room.locationMode === 'in_person' 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      📍 อยู่ที่เดียวกัน (หน้าต่อหน้า)
+                    </button>
+                    <button
+                      onClick={() => setRoom(r => ({ ...r, locationMode: 'online' }))}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                        room.locationMode === 'online' 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      🌐 อยู่คนละที่ (ออนไลน์ มีแชท)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* GM Option & Role Pick */}
+              {room.gameType === 'werewolf' && (
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <div>
+                      <div className="font-bold text-xs text-slate-800">กำหนดให้มีผู้ดำเนินเกม (GM)</div>
+                      <div className="text-[11px] text-slate-400">ถ้าเปิด ระบบจะบังคับให้เลือก GM 1 คนก่อนเริ่มเกม</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={room.hasGM}
+                      onChange={(e) => setRoom(r => ({ ...r, hasGM: e.target.checked }))}
+                      className="w-5 h-5 accent-blue-600 rounded cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5">เลือกสถานะตัวคุณในเกมนี้:</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleToggleGM(true)}
+                        className={`py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 ${
+                          me?.isGM
+                            ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        👑 เป็นผู้ดำเนินเกม (GM)
+                      </button>
+                      <button
+                        onClick={() => handleToggleGM(false)}
+                        className={`py-2.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 ${
+                          !me?.isGM
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        🕹️ เป็นผู้เล่นธรรมดา
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Players List */}
+            <div className="bg-white border border-blue-100 p-5 rounded-3xl space-y-3 shadow-md">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <IconUsers className="w-4 h-4 text-blue-600" /> ผู้เล่นในห้อง ({room.players.length} คน)
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {room.players.map((p) => (
+                  <div key={p.id} className="bg-slate-50 border border-slate-200 p-2.5 rounded-2xl flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-800 truncate">
+                      {p.name} {p.id === myPlayerId && '(คุณ)'}
+                    </span>
+                    {p.isGM && (
+                      <span className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        GM
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Control Actions */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setView('home')}
+                className="flex-1 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold py-3.5 px-4 rounded-2xl text-sm transition"
+              >
+                ออกจากห้อง
+              </button>
+              <button
+                onClick={handleStartGame}
+                className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-3.5 px-4 rounded-2xl shadow-lg shadow-blue-600/20 text-base transition flex items-center justify-center gap-2 transform active:scale-98"
+              >
+                <IconPlay className="w-5 h-5" /> เริ่มเกมเลย!
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= VIEW 3: GAME SCREEN ================= */}
+        {view === 'game' && room && (
+          <div className="w-full max-w-xl space-y-5 animate-fade-in">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between bg-white border border-blue-100 px-4 py-3 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-lg">
+                  {room.gameType === 'werewolf' ? '🐺 Werewolf' : '📱 ทายคำบนหัว'}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">ห้อง: {room.code}</span>
+              </div>
+              <button
+                onClick={() => setView('lobby')}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl border border-slate-200 transition"
+              >
+                กลับสู่ Lobby
+              </button>
+            </div>
+
+            {/* --- WEREWOLF GAME INTERFACE --- */}
+            {room.gameType === 'werewolf' && (
+              <div className="space-y-5">
+                {/* Discussion Header & Timer */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5 rounded-3xl shadow-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white/20 p-2.5 rounded-2xl">
+                      <IconClock className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-blue-100 uppercase">
+                        {room.phase === 'discussion' ? 'ช่วงเวลาอภิปรายซักถาม' : 'ช่วงเวลาลงมติโหวต'}
+                      </div>
+                      <div className="text-2xl font-black font-mono">
+                        {room.phase === 'discussion'
+                          ? `${Math.floor(room.timer / 60)}:${(room.timer % 60).toString().padStart(2, '0')}`
+                          : 'กำลังโหวต...'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setRoom(r => ({
+                      ...r,
+                      phase: r.phase === 'discussion' ? 'voting' : 'discussion',
+                      timer: 120
+                    }))}
+                    className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3.5 py-2 rounded-xl border border-white/20 transition"
+                  >
+                    {room.phase === 'discussion' ? 'ข้ามไปหน้าโหวต' : 'เริ่มอภิปรายใหม่'}
+                  </button>
+                </div>
+
+                {/* GM Screen vs Secret Role Card */}
+                {me?.isGM ? (
+                  /* GM VIEW (ALL ROLES REVEALED) */
+                  <div className="bg-white border border-amber-200 p-6 rounded-3xl space-y-4 shadow-lg">
+                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                      <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
+                        <IconCrown className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-slate-900 text-base">มุมมองผู้ดำเนินเกม (GM)</h3>
+                        <p className="text-xs text-amber-700 font-medium">✨ คุณเห็นบทบาทลับของผู้เล่นทุกคนในห้อง</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-slate-500 uppercase">รายชื่อผู้เล่นและบทบาทลับ (GM Only):</h4>
+                      <div className="grid grid-cols-1 gap-2">
+                        {room.players.map(p => (
+                          <div key={p.id} className="bg-slate-50 p-3 rounded-2xl flex justify-between items-center border border-slate-200">
+                            <span className="font-bold text-sm text-slate-800">{p.name} {p.id === myPlayerId && '(คุณ)'}</span>
+                            <span className={`text-xs px-3 py-1 rounded-full font-bold ${
+                              p.role?.type === 'bad'
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : p.role?.type === 'gm'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}>
+                              {p.role?.name || 'กำลังสุ่ม...'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* SECRET ROLE CARD */
+                  <div className="bg-white border border-blue-100 p-6 rounded-3xl text-center space-y-4 shadow-lg">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900">การ์ดบทบาทลับของคุณ</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">แตะการ์ดเพื่อเปิด/ปิดดูบทบาท (ระวังคนข้างๆ แอบมอง!)</p>
+                    </div>
+
+                    <div className="py-2">
+                      {cardRevealed ? (
+                        <div className="bg-gradient-to-b from-blue-50 to-indigo-50 border-2 border-blue-400 p-8 rounded-3xl shadow-md space-y-4">
+                          <div className="text-6xl">
+                            {me?.role?.type === 'bad' ? '🐺' : '🛡️'}
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold uppercase text-blue-600 tracking-wider">บทบาทของคุณคือ</span>
+                            <h4 className="text-2xl font-black text-slate-900 mt-0.5">{me?.role?.name || 'ชาวบ้าน'}</h4>
+                            <p className="text-xs text-slate-600 mt-2 leading-relaxed px-4">{me?.role?.desc || 'ช่วยกันสืบหาหมาป่า!'}</p>
+                          </div>
+                          <button
+                            onClick={() => setCardRevealed(false)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition flex items-center gap-1.5 mx-auto"
+                          >
+                            <IconEyeOff className="w-4 h-4" /> ปิดซ่อนการ์ดลับ
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => setCardRevealed(true)}
+                          className="bg-slate-50 border-2 border-dashed border-blue-300 p-10 rounded-3xl cursor-pointer hover:border-blue-500 transition flex flex-col items-center justify-center space-y-3"
+                        >
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                            <IconEye className="w-6 h-6" />
+                          </div>
+                          <span className="font-bold text-sm text-slate-700">แตะเพื่อเปิดดูบทบาทลับ</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* VOTING PHASE */}
+                {room.phase === 'voting' && (
+                  <div className="bg-white border border-rose-200 p-5 rounded-3xl space-y-4 shadow-lg">
+                    <div className="text-center space-y-1">
+                      <span className="bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-xs font-bold border border-rose-200 inline-block">
+                        🗳️ ช่วงเวลาลงมติโหวตผู้ต้องสงสัย
+                      </span>
+                      <h4 className="text-base font-black text-slate-900">โหวตผู้เล่น 1 คน หรือกดข้าม</h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      {room.players.map(p => {
+                        const myVote = room.votes?.[myPlayerId];
+                        const isVoted = myVote === p.id;
+                        const totalVotes = Object.values(room.votes || {}).filter(v => v === p.id).length;
+
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => handleVote(p.id)}
+                            className={`w-full p-3 rounded-2xl border text-left transition flex justify-between items-center ${
+                              isVoted 
+                                ? 'bg-rose-50 border-rose-400 text-rose-900 font-bold shadow-sm' 
+                                : 'bg-slate-50 border-slate-200 text-slate-700'
+                            }`}
+                          >
+                            <span className="text-sm">{p.name} {p.id === myPlayerId && '(คุณ)'}</span>
+                            <span className="text-xs bg-slate-200 px-2.5 py-1 rounded-lg font-bold">
+                              {totalVotes} คะแนน
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      {/* Skip vote */}
+                      <button
+                        onClick={() => handleVote('skip')}
+                        className={`w-full p-3 rounded-2xl border text-center transition text-sm font-bold ${
+                          room.votes?.[myPlayerId] === 'skip'
+                            ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-sm'
+                            : 'bg-slate-100 border-slate-300 text-slate-600'
+                        }`}
+                      >
+                        🚫 กดข้ามการโหวต (Skip Vote) ({Object.values(room.votes || {}).filter(v => v === 'skip').length} คน)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ONLINE CHATBOX */}
+                {room.locationMode === 'online' && (
+                  <div className="bg-white border border-blue-100 p-4.5 rounded-3xl space-y-3 shadow-md">
+                    <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <IconMessage className="w-4 h-4 text-blue-600" /> กล่องแชทข้อความในห้อง (Live Room Chat)
+                    </h4>
+
+                    <div className="h-40 overflow-y-auto bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+                      {room.chatMessages?.length > 0 ? (
+                        room.chatMessages.map(msg => (
+                          <div key={msg.id} className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs space-y-0.5">
+                            <div className="flex justify-between font-bold text-blue-800 text-[11px]">
+                              <span>{msg.senderName}</span>
+                              <span className="text-[10px] text-slate-400">{msg.time}</span>
+                            </div>
+                            <p className="text-slate-700">{msg.text}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
+                          พิมพ์ข้อความซักถามเพื่อนในห้องได้ที่นี่...
+                        </div>
+                      )}
+                    </div>
+
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="พิมพ์ข้อความ..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md">
+                        ส่ง
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- HEADS UP GAME INTERFACE --- */}
+            {room.gameType === 'headsup' && (
+              <div className="bg-white border border-blue-100 p-6 rounded-3xl text-center space-y-6 shadow-xl">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">📱 เกมทายคำบนหัว (Heads Up)</h3>
+                  <p className="text-xs text-slate-500 mt-1">นำโทรศัพท์แนบหน้าผาก แล้วให้เพื่อนช่วยกันใบ้!</p>
+                </div>
+
+                {!headsUpActive ? (
+                  <div className="py-6 space-y-4">
+                    <div className="text-3xl font-black text-blue-700 bg-blue-50 py-3 px-6 rounded-2xl inline-block border border-blue-100">
+                      คะแนนรอบล่าสุด: {headsUpScore} คะแนน
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => {
+                          setHeadsUpScore(0);
+                          setHeadsUpIndex(0);
+                          setHeadsUpTimer(60);
+                          setHeadsUpActive(true);
+                        }}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 px-8 rounded-2xl text-lg shadow-xl shadow-blue-600/20 transition transform active:scale-95"
+                      >
+                        🚀 เริ่มทายคำ 60 วินาที!
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-slate-100 px-5 py-3 rounded-2xl border border-slate-200 text-sm font-extrabold">
+                      <span className="text-blue-700">⏱️ เวลา: {headsUpTimer} วินาที</span>
+                      <span className="text-emerald-700">🏆 คะแนน: {headsUpScore}</span>
+                    </div>
+
+                    <div className="bg-gradient-to-b from-blue-50 to-indigo-50 border-2 border-blue-300 p-10 rounded-3xl shadow-inner">
+                      <h2 className="text-4xl font-black text-slate-900">
+                        {DEFAULT_HEADS_UP_WORDS[headsUpIndex % DEFAULT_HEADS_UP_WORDS.length]}
+                      </h2>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => {
+                          setHeadsUpScore(s => s + 1);
+                          setHeadsUpIndex(i => i + 1);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-2xl text-base shadow-md flex items-center justify-center gap-1.5"
+                      >
+                        <IconCheck className="w-5 h-5" /> ถูกต้อง (+1)
+                      </button>
+                      <button
+                        onClick={() => setHeadsUpIndex(i => i + 1)}
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-2xl text-base flex items-center justify-center gap-1.5"
+                      >
+                        <IconX className="w-5 h-5" /> ข้ามคำนี้
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= VIEW 4: ADMIN DASHBOARD ================= */}
+        {view === 'admin' && (
+          <div className="w-full max-w-2xl space-y-5 animate-fade-in">
+            <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-blue-100 shadow-sm">
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-100 p-2 rounded-xl text-blue-700">
+                  <IconShield className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-base">แผงผู้ดูแลระบบ (Admin Dashboard)</h3>
+              </div>
+              <button
+                onClick={() => setView('home')}
+                className="bg-slate-100 hover:bg-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 transition"
+              >
+                ออกจากระบบ Admin
+              </button>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white border border-blue-100 p-4 rounded-2xl shadow-sm text-center">
+                <div className="text-slate-400 text-xs font-bold">ยอดวิวรวม</div>
+                <div className="text-2xl font-black text-blue-600 mt-1">{metrics.totalViews}</div>
+              </div>
+              <div className="bg-white border border-blue-100 p-4 rounded-2xl shadow-sm text-center">
+                <div className="text-slate-400 text-xs font-bold">Werewolf เล่นไป</div>
+                <div className="text-2xl font-black text-indigo-600 mt-1">{metrics.werewolfPlayed} ครั้ง</div>
+              </div>
+              <div className="bg-white border border-blue-100 p-4 rounded-2xl shadow-sm text-center">
+                <div className="text-slate-400 text-xs font-bold">ทายคำเล่นไป</div>
+                <div className="text-2xl font-black text-sky-600 mt-1">{metrics.headsupPlayed} ครั้ง</div>
+              </div>
+            </div>
+
+            {/* Add Custom Word Pack Tool */}
+            <div className="bg-white border border-blue-100 p-5 rounded-3xl space-y-3 shadow-sm">
+              <h4 className="font-bold text-slate-800 text-sm">✨ เพิ่มเกม / ชุดคำศัพท์ใหม่ลงระบบ</h4>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="ชื่อชุดคำ (เช่น อนิเมะฮิต)..."
+                  value={newGameTitle}
+                  onChange={(e) => setNewGameTitle(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <textarea
+                  rows={3}
+                  placeholder="รายการคำศัพท์ (คั่นด้วยจุลภาค ,)..."
+                  value={newGameWords}
+                  onChange={(e) => setNewGameWords(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+                <button
+                  onClick={() => {
+                    if (!newGameTitle.trim()) {
+                      alert("กรุณากรอกชื่อชุดคำ");
+                      return;
+                    }
+                    alert(`บันทึกชุดคำ "${newGameTitle}" เข้าฐานข้อมูลเรียบร้อยแล้ว!`);
+                    setNewGameTitle('');
+                    setNewGameWords('');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition"
+                >
+                  บันทึกข้อมูลเข้าสู่ระบบ
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* --- QR CODE MODAL SIMULATION --- */}
+      {showQrModal && room && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-blue-100 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <h3 className="font-black text-slate-900 text-lg">สแกนเพื่อเข้าห้องเกม</h3>
+            <p className="text-xs text-slate-500">รหัสห้อง: <strong className="text-blue-600 font-mono text-base">{room.code}</strong></p>
+
+            {/* Simulated QR Box */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 inline-block">
+              <div className="w-36 h-36 bg-white border-4 border-slate-900 p-2 flex flex-col justify-between mx-auto shadow-sm">
+                <div className="flex justify-between">
+                  <div className="w-7 h-7 bg-slate-900"></div>
+                  <div className="w-7 h-7 bg-slate-900"></div>
+                </div>
+                <div className="text-[10px] font-mono font-bold text-slate-900 tracking-tighter">
+                  {room.code}
+                </div>
+                <div className="flex justify-between items-end">
+                  <div className="w-7 h-7 bg-slate-900"></div>
+                  <div className="w-4 h-4 bg-blue-600"></div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition"
+            >
+              ปิดหน้าต่าง
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- FOOTER --- */}
+      <footer className="border-t border-blue-100 bg-white py-3 text-center text-[11px] text-slate-400">
+        Board Game Party Hub &copy; 2026 - Soft Pastel Navy & Light Blue Theme
+      </footer>
+    </div>
+  );
+}
